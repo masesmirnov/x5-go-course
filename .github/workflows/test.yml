@@ -1,0 +1,44 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - run: test -z "$(gofmt -l . | tee /dev/stderr)"
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.11.4
+
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - run: go test ./...
+      - if: runner.os == 'Linux'
+        run: |
+          shopt -s nullglob
+          {
+            echo '```console'
+            for dir in lesson*/*/; do
+              echo "\$ go run ./${dir%/}"
+              go run "./$dir"
+              echo
+            done
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
